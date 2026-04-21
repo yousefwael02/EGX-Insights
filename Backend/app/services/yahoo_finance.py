@@ -279,7 +279,7 @@ def get_stock_history(
             return []
 
         result = _parse_chart_response(data, interval)
-        logger.info("Yahoo chart: %d points for %s (%s)", len(result), yf_ticker, period)
+
         return result
 
     except Exception as exc:

@@ -117,10 +117,6 @@ async def add_holding(req: AddHoldingRequest, current_user: dict = Depends(get_c
     }
     db = get_db()
     await db.holdings.insert_one(doc)
-    logger.info(
-        "Portfolio[%s]: added %s x%.2f @ %.2f",
-        user_id, req.ticker.upper(), req.quantity, req.avgCost,
-    )
     return _enrich(doc)
 
 
@@ -132,7 +128,6 @@ async def remove_holding(holding_id: str, current_user: dict = Depends(get_curre
     result = await db.holdings.delete_one({"id": holding_id, "user_id": user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Holding not found")
-    logger.info("Portfolio[%s]: removed holding %s", user_id, holding_id)
 
 
 @router.put("/holdings/{holding_id}", response_model=PortfolioHolding)

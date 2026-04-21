@@ -1,6 +1,9 @@
 import { Stock, ChartPoint, Insight, MarketSummary, AlphaLeader, ValueFloor, PortfolioStats, PortfolioHolding, WatchlistItem, User, AIRecommendationsResponse, StockChatMessage, StockChatResponse } from './types';
 
-const API_BASE = '/api';
+// Use /api in dev (proxied via vite), or full URL in production
+const API_BASE = import.meta.env.VITE_API_BASE_URL 
+  ? import.meta.env.VITE_API_BASE_URL 
+  : '/api';
 
 // ── Auth helpers ─────────────────────────────────────────────────────────────
 

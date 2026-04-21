@@ -35,16 +35,25 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# CORS configuration: dev-friendly defaults, production-ready via env
+allow_origins = (
+    [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",  # Vite default dev port
+        "http://127.0.0.1:5173",
+    ]
+    if os.getenv("ENV") != "production"
+    else [
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        origin.strip()
-        for origin in os.getenv(
-            "CORS_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000",
-        ).split(",")
-        if origin.strip()
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -91,16 +100,13 @@ async def startup():
     """Verify MongoDB connection and pre-populate the stock quote cache."""
     try:
         await get_client().admin.command("ping")
-        logger.info("MongoDB connection established.")
     except Exception as exc:
         logger.error("MongoDB connection failed: %s", exc)
 
     async def _warmup():
         await asyncio.sleep(2)
-        logger.info("Starting EGX stock cache warmup…")
         try:
             await stocks.get_all_stocks()
-            logger.info("Cache warmup complete.")
         except Exception as exc:
             logger.error("Cache warmup failed: %s", exc)
 

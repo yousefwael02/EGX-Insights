@@ -165,8 +165,9 @@ def _generate_text_with_gemini(
                     follow_up_text = _normalize_gemini_text(getattr(follow_up, "text", "") or "")
                     if follow_up_text:
                         text = _merge_continuation(text, follow_up_text)
-                except Exception as continue_exc:
-                    logger.info("Gemini continuation attempt failed for %s: %s", model_name, continue_exc)
+                except Exception:
+                    pass
+
 
             text = _trim_to_complete_boundary(text) if allow_continuation else text
             if text:
@@ -678,7 +679,7 @@ def _generate_recommendations_sync(stocks_data: list) -> dict:
                 f"{fallback['summary']} Gemini free-tier quota is temporarily unavailable, so a local fallback was used."
             )
         elif "json" in error_text or "delimiter" in error_text:
-            logger.info("Gemini returned a malformed recommendations payload; using the safe local fallback.")
+
             fallback["summary"] = (
                 f"{fallback['summary']} Gemini returned malformed JSON, so a safe fallback was used."
             )
@@ -909,7 +910,7 @@ def _generate_market_chat_sync(question: str, stocks_data: list[dict], history: 
         ).strip()
 
         if answer and not _answer_is_egx_specific(answer, stocks_data):
-            logger.info("Gemini stock chat drifted outside EGX scope; using the safe EGX fallback reply.")
+
             return {
                 "answer": fallback_answer,
                 "suggestedQuestions": _CHAT_SUGGESTIONS,
@@ -923,7 +924,7 @@ def _generate_market_chat_sync(question: str, stocks_data: list[dict], history: 
         }
     except Exception as exc:
         if _is_quota_error(exc) or "cooldown" in str(exc).lower():
-            logger.info("Gemini stock chat temporarily unavailable; using local market assistant fallback.")
+            pass
         else:
             logger.error("Gemini stock chat error: %s", exc)
         return {

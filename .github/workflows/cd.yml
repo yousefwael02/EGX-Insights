@@ -58,10 +58,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
       - name: Configure kubectl
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+          if echo "${{ secrets.KUBE_CONFIG }}" | grep -q "apiVersion:"; then
+            printf '%s' "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          else
+            echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+          fi
+          chmod 600 $HOME/.kube/config
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+
+      - name: Verify cluster connectivity
+        run: |
+          kubectl config current-context
+          kubectl cluster-info
 
       - name: Deploy manifests
         run: |

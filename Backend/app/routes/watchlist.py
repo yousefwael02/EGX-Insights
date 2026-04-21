@@ -79,7 +79,6 @@ async def add_to_watchlist(
         {"$addToSet": {"tickers": ticker}},
         upsert=True,
     )
-    logger.info("Watchlist[%s]: added %s", user_id, ticker)
     return _enrich(ticker)
 
 
@@ -97,4 +96,3 @@ async def remove_from_watchlist(
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Ticker not in watchlist")
-    logger.info("Watchlist[%s]: removed %s", user_id, upper)

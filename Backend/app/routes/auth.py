@@ -47,7 +47,6 @@ async def register(body: UserCreate):
     user_id = str(result.inserted_id)
 
     token = create_access_token(user_id, body.email.lower())
-    logger.info("New user registered: %s", body.email.lower())
     return TokenResponse(
         access_token=token,
         user=UserOut(id=user_id, email=body.email.lower(), name=body.name or ""),
@@ -64,7 +63,6 @@ async def login(body: UserLogin):
 
     user_id = str(user["_id"])
     token = create_access_token(user_id, user["email"])
-    logger.info("User logged in: %s", user["email"])
     return TokenResponse(
         access_token=token,
         user=UserOut(id=user_id, email=user["email"], name=user.get("name", "")),
