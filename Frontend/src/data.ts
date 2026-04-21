@@ -1,9 +1,16 @@
 import { Stock, ChartPoint, Insight, MarketSummary, AlphaLeader, ValueFloor, PortfolioStats, PortfolioHolding, WatchlistItem, User, AIRecommendationsResponse, StockChatMessage, StockChatResponse } from './types';
 
-// Use /api in dev (proxied via vite), or full URL in production
-const API_BASE = import.meta.env.VITE_API_BASE_URL 
-  ? import.meta.env.VITE_API_BASE_URL 
-  : '/api';
+function resolveApiBase(): string {
+  const rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (!rawBase) {
+    return '/api';
+  }
+
+  const normalized = rawBase.replace(/\/+$/, '');
+  return normalized.endsWith('/api') ? normalized : `${normalized}/api`;
+}
+
+const API_BASE = resolveApiBase();
 
 // ── Auth helpers ─────────────────────────────────────────────────────────────
 
