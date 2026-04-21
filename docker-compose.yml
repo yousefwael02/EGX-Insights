@@ -1,0 +1,54 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: stockinsight-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - '27017:27017'
+
+  redis:
+    image: redis:7-alpine
+    container_name: stockinsight-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.dev
+    container_name: stockinsight-backend
+    restart: unless-stopped
+    env_file:
+      - ./Backend/.env
+    environment:
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      MONGODB_DB: stockinsight
+      CORS_ORIGINS: http://localhost:3000
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./Backend:/app
+    depends_on:
+      - mongodb
+      - redis
+    ports:
+      - '8000:8000'
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: stockinsight-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '3000:80'
+
+volumes:
+  mongo_data:

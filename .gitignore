@@ -1,0 +1,68 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets / environment
+.env
+.env.*
+!.env.example
+Backend/.env
+Backend/.env.*
+!Backend/.env.example
+Frontend/.env
+Frontend/.env.*
+!Frontend/.env.example
+
+# Python (backend)
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.venv/
+venv/
+env/
+Backend/env/
+Backend/.venv/
+Backend/.pytest_cache/
+Backend/.ruff_cache/
+Backend/.mypy_cache/
+
+# Coverage / test artifacts
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Node / frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Docker / runtime
+*.pid
+*.log
+
+# Local cache or tooling
+.vite/

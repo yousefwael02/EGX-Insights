@@ -1,0 +1,29 @@
+StockInsight Terminal - Project Brief
+
+Overview
+StockInsight Terminal is a full-stack EGX (Egyptian Exchange) market intelligence app.
+It combines real-time stock data, AI-generated insights, and personal investing tools in one interface.
+
+Architecture
+- Frontend: React + TypeScript (Vite)
+- Backend: FastAPI (Python)
+- Database: MongoDB (via Motor/PyMongo)
+- AI Layer: Google Gemini for market chat, stock insights, and scanner recommendations
+
+Core Features
+- Live EGX stock quotes with cache warmup at backend startup
+- Market scanners and stock detail views
+- AI recommendations (buy/sell) and natural-language market chat
+- Historical chart data and per-stock AI insight generation
+- Authentication-protected portfolio and watchlist modules
+- Portfolio performance metrics (cost basis, P/L, P/L %)
+
+Data Flow
+- Primary quote source: TradingView scanner
+- Fallback quote source: Yahoo Finance (yfinance)
+- API responses are cached to reduce latency and external API calls
+
+Notes
+- Frontend routes include dashboard, scanners, chat, portfolio, watchlist, and stock details
+- Backend exposes REST endpoints under /api/* for auth, stocks, market, portfolio, and watchlist
+- Designed for local development with separate Frontend and Backend folders
