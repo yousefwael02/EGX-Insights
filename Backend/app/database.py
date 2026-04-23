@@ -2,7 +2,6 @@ import logging
 import os
 
 import certifi
-
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 _client: AsyncIOMotorClient | None = None
