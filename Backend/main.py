@@ -14,6 +14,18 @@ from slowapi.util import get_remote_address
 from app.database import close_client, get_client
 from app.routes import auth, market, portfolio, stocks, watchlist
 
+
+def _parse_cors_origins() -> list[str]:
+    """Parse and normalize comma-separated origins from CORS_ORIGINS."""
+    raw = os.getenv("CORS_ORIGINS", "")
+    origins: list[str] = []
+    for value in raw.split(","):
+        cleaned = value.strip().strip('"').strip("'").rstrip("/")
+        if cleaned:
+            origins.append(cleaned)
+    return list(dict.fromkeys(origins))
+
+
 _handler = logging.StreamHandler()
 _handler.setFormatter(
     jsonlogger.JsonFormatter("%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -35,21 +47,18 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS configuration: dev-friendly defaults, production-ready via env
-allow_origins = (
-    [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",  # Vite default dev port
-        "http://127.0.0.1:5173",
-    ]
-    if os.getenv("ENV") != "production"
-    else [
-        origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", "").split(",")
-        if origin.strip()
-    ]
-)
+# CORS configuration: always honor explicit origins; add localhost defaults in non-prod.
+dev_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",  # Vite default dev port
+    "http://127.0.0.1:5173",
+]
+configured_origins = _parse_cors_origins()
+if os.getenv("ENV") == "production":
+    allow_origins = configured_origins
+else:
+    allow_origins = list(dict.fromkeys([*configured_origins, *dev_origins]))
 
 app.add_middleware(
     CORSMiddleware,
