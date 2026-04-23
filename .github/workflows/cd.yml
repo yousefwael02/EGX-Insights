@@ -45,7 +45,6 @@ jobs:
         #   VERCEL_TOKEN     — from vercel.com/account/tokens
         #   VERCEL_ORG_ID    — run `vercel whoami --json` or check .vercel/project.json
         #   VERCEL_PROJECT_ID — run `vercel link` locally, then check .vercel/project.json
-        working-directory: Frontend
         run: |
           vercel deploy --prod \
             --token="${{ secrets.VERCEL_TOKEN }}" \
