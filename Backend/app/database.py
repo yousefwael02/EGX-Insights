@@ -1,15 +1,39 @@
 import os
+import logging
+
+import certifi
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 _client: AsyncIOMotorClient | None = None
+logger = logging.getLogger(__name__)
+
+
+def _is_atlas_uri(uri: str) -> bool:
+    return uri.startswith("mongodb+srv://") or "mongodb.net" in uri
 
 
 def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
         uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-        _client = AsyncIOMotorClient(uri)
+        client_options: dict[str, object] = {
+            "serverSelectionTimeoutMS": int(
+                os.getenv("MONGODB_SERVER_SELECTION_TIMEOUT_MS", "30000")
+            )
+        }
+
+        # Atlas/Cloud MongoDB commonly requires an explicit CA bundle in containers.
+        if _is_atlas_uri(uri):
+            client_options["tls"] = True
+            client_options["tlsCAFile"] = certifi.where()
+
+        _client = AsyncIOMotorClient(uri, **client_options)
+        logger.info(
+            "Mongo client initialized atlas=%s timeout_ms=%s",
+            _is_atlas_uri(uri),
+            client_options["serverSelectionTimeoutMS"],
+        )
     return _client
 
 
