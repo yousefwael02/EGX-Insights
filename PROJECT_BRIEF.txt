@@ -1,29 +1,96 @@
-StockInsight Terminal - Project Brief
+EGX Insights - Project Brief
 
 Overview
-StockInsight Terminal is a full-stack EGX (Egyptian Exchange) market intelligence app.
-It combines real-time stock data, AI-generated insights, and personal investing tools in one interface.
+EGX Insights is a full-stack Egyptian Exchange (EGX) market intelligence platform. It gives retail investors a single, fast interface for stock data, AI-driven analysis, personal portfolio tracking, and watchlist management. The backend is deployed on Render; the frontend is deployed on Vercel.
 
-Architecture
-- Frontend: React + TypeScript (Vite)
-- Backend: FastAPI (Python)
-- Database: MongoDB (via Motor/PyMongo)
-- AI Layer: Google Gemini for market chat, stock insights, and scanner recommendations
+Live URLs
+- Frontend: https://egx-insights.vercel.app/  (Vercel)
+- Backend API: https://egx-insights.onrender.com  (Render)
+
+Tech Stack
+- Frontend: React 18 + TypeScript, Vite, Tailwind CSS
+- Backend: FastAPI (Python 3.13), async via Motor/PyMongo
+- Database: MongoDB Atlas (cloud-hosted)
+- AI Layer: Google Gemini 2.5 Flash — market chat, per-stock insights, scanner recommendations
+- Auth: JWT (python-jose + bcrypt)
+- CI/CD: GitHub Actions — runs tests on every push, auto-deploys to Render + Vercel on merge to main
 
 Core Features
-- Live EGX stock quotes with cache warmup at backend startup
-- Market scanners and stock detail views
-- AI recommendations (buy/sell) and natural-language market chat
-- Historical chart data and per-stock AI insight generation
-- Authentication-protected portfolio and watchlist modules
-- Portfolio performance metrics (cost basis, P/L, P/L %)
+
+1. Live EGX Market Dashboard
+   Displays all EGX-listed stocks with prices, fair-value estimates, upside %, P/E ratios,
+   52-week highs/lows, and technical sentiment scores. Primary data comes from the TradingView
+   scanner; Yahoo Finance (yfinance) is used as an automatic fallback for any tickers the primary
+   feed misses. Quotes are cached server-side for 5 minutes to minimize latency.
+
+2. Stock Detail View
+   Clicking any stock opens a detail panel with interactive historical price charts (1D, 1W, 1M,
+   1Y, ALL), fundamental data (EPS, revenue, market cap, sector), and an on-demand Gemini-generated
+   AI insight card that summarises the stock's current position and outlook.
+
+3. Market Scanners
+   Seven pre-built screener presets filter the full EGX universe in real time:
+   - Alpha Hunt       — highest upside to fair value
+   - Deep Value       — lowest P/E (< 15)
+   - Near 52W High    — within 10 % of yearly peak (momentum)
+   - Value Floor      — closest to 52-week lows
+   - Bullish Consensus — strongest technical buy sentiment (score ≥ 62)
+   - Bearish Watch    — weakest sentiment / risk zone (score < 40)
+   - Overvalued       — trading above estimated fair value
+   Each scanner supports secondary sector filtering and column-level sorting. An AI Picks tab
+   inside the scanners panel calls Gemini to produce a ranked buy/sell recommendation list with
+   conviction levels (High / Medium / Low) and natural-language rationale per pick.
+
+4. AI Market Chat
+   A conversational chat interface backed by Gemini. Users can ask free-form questions about any
+   EGX stock or the overall market (e.g. "Which banking stocks look undervalued?"). The model
+   receives the current live snapshot of all stock data as context and maintains multi-turn
+   conversation history. It also returns suggested follow-up questions after each reply.
+
+5. Portfolio Management
+   Authentication-gated module. Users can:
+   - Add holdings by searching for any EGX ticker with quantity and average purchase cost
+   - Edit or delete existing holdings
+   - View real-time P&L per holding (current value, cost basis, gain/loss in EGP and %)
+   - See aggregate portfolio stats: total invested, current value, total gain/loss and %
+   Portfolio data is stored per-user in MongoDB; live prices are injected from the server-side
+   cache at read time so totals always reflect the latest quotes.
+
+6. Watchlist Analysis
+   Authentication-gated module. Users maintain a personal watchlist of EGX tickers. Each watched
+   stock is enriched with current price, fair value, upside %, P/E, 52-week range, and sentiment
+   score pulled from the live cache. The watchlist supports:
+   - Typeahead search to add any valid EGX ticker
+   - Column sorting (price, upside, P/E, sentiment, % below high)
+   - One-click removal
+   - Sentiment bar visualisation (Bullish / Neutral / Bearish) per holding
+
+7. Authentication
+   Email + password registration and login. Passwords are hashed with bcrypt. Sessions use signed
+   JWTs (7-day expiry). Protected routes (portfolio, watchlist) require a valid bearer token.
 
 Data Flow
-- Primary quote source: TradingView scanner
-- Fallback quote source: Yahoo Finance (yfinance)
-- API responses are cached to reduce latency and external API calls
+- Quote ingestion: TradingView scanner → parsed + normalised → stored in in-memory cache
+- Fallback: yfinance fetches run concurrently (semaphore-bounded to 8) for any ticker the
+  primary feed misses
+- Cache TTLs: 5 min for quotes, per-ticker for history and insight responses
+- AI calls: Gemini receives only the minimal stock snapshot needed per feature to keep prompts
+  focused and latency low
 
-Notes
-- Frontend routes include dashboard, scanners, chat, portfolio, watchlist, and stock details
-- Backend exposes REST endpoints under /api/* for auth, stocks, market, portfolio, and watchlist
-- Designed for local development with separate Frontend and Backend folders
+API Endpoints
+  POST /api/auth/register, POST /api/auth/login, GET /api/auth/me
+  GET  /api/stocks, GET /api/stocks/{ticker}, GET /api/stocks/{ticker}/history
+  GET  /api/stocks/{ticker}/insights, GET /api/stocks/ai-recommendations
+  POST /api/stocks/chat
+  GET  /api/market/summary, GET /api/market/leaders, GET /api/market/value-floor
+  GET/POST/PUT/DELETE /api/portfolio, /api/portfolio/holdings/{id}
+  GET/POST/DELETE /api/watchlist, /api/watchlist/{ticker}
+
+Deployment
+- Backend on Render: Docker-based web service, auto-deployed via GitHub Actions deploy hook on
+  every merge to main. Environment variables (MONGODB_URI, JWT_SECRET, GEMINI_API_KEY,
+  CORS_ORIGINS, ENV=production) are set in the Render dashboard.
+- Frontend on Vercel: Vite project, auto-deployed via Vercel CLI in GitHub Actions on every merge
+  to main. VITE_API_BASE_URL is set as a Vercel environment variable to point to the Render API.
+- CI: GitHub Actions runs ruff + pytest (backend) and eslint + typecheck + vitest (frontend) on
+  every push to any branch before allowing merge.
