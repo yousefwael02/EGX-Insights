@@ -7,90 +7,49 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  REGISTRY: ghcr.io
-  IMAGE_BACKEND: ${{ github.repository_owner }}/stockinsight-backend
-  IMAGE_FRONTEND: ${{ github.repository_owner }}/stockinsight-frontend
 
 jobs:
-  publish-images:
+  deploy-backend:
+    name: Deploy Backend → Render
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        # RENDER_DEPLOY_HOOK_URL is found in Render dashboard:
+        # Service → Settings → Deploy Hook → Copy URL
+        run: |
+          curl -fsSL --retry 3 --retry-delay 5 \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -o /dev/null \
+            -w "HTTP status: %{http_code}\n"
+
+  deploy-frontend:
+    name: Deploy Frontend → Vercel
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          node-version: '22'
 
-      - name: Set image tag
-        id: meta
-        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
 
-      - name: Build and push backend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./Backend
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}:${{ steps.meta.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}:latest
-
-      - name: Build and push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./Frontend
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}:latest
-
-  deploy-k8s:
-    runs-on: ubuntu-latest
-    needs: publish-images
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Configure kubectl
+      - name: Deploy to Vercel (production)
+        # Required secrets (set in GitHub repo → Settings → Secrets):
+        #   VERCEL_TOKEN     — from vercel.com/account/tokens
+        #   VERCEL_ORG_ID    — run `vercel whoami --json` or check .vercel/project.json
+        #   VERCEL_PROJECT_ID — run `vercel link` locally, then check .vercel/project.json
+        working-directory: Frontend
         run: |
-          mkdir -p $HOME/.kube
-          if echo "${{ secrets.KUBE_CONFIG }}" | grep -q "apiVersion:"; then
-            printf '%s' "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
-          else
-            echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
-          fi
-          chmod 600 $HOME/.kube/config
-          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
-
-      - name: Verify cluster connectivity
-        run: |
-          kubectl config current-context
-          kubectl cluster-info
-
-      - name: Deploy manifests
-        run: |
-          kubectl apply -f deploy/k8s/namespace.yaml
-          kubectl apply -f deploy/k8s/configmap.yaml
-          kubectl apply -f deploy/k8s/secrets.yaml
-          kubectl apply -f deploy/k8s/backend-deployment.yaml
-          kubectl apply -f deploy/k8s/frontend-deployment.yaml
-          kubectl apply -f deploy/k8s/services.yaml
-          kubectl apply -f deploy/k8s/ingress.yaml
-
-      - name: Update image tags
-        run: |
-          TAG=${GITHUB_SHA::7}
-          kubectl -n stockinsight set image deployment/backend backend=ghcr.io/${{ github.repository_owner }}/stockinsight-backend:${TAG}
-          kubectl -n stockinsight set image deployment/frontend frontend=ghcr.io/${{ github.repository_owner }}/stockinsight-frontend:${TAG}
-          kubectl -n stockinsight rollout status deployment/backend --timeout=120s
-          kubectl -n stockinsight rollout status deployment/frontend --timeout=120s
+          vercel deploy --prod \
+            --token="${{ secrets.VERCEL_TOKEN }}" \
+            --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
